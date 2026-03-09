@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_device_wifi"
+        android:title="Device WiFi" />
+    <item
+        android:id="@+id/nav_language"
+        android:title="Language" />
+    <item
+        android:id="@+id/nav_ocr_engine"
+        android:title="OCR Engine" />
+</menu>
