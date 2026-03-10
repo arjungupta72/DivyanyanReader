@@ -48,6 +48,8 @@
         android:layout_height="match_parent"
         android:layout_gravity="start"
         app:itemTextAppearance="@style/DrawerItemTextAppearance"
-        app:menu="@menu/drawer_menu" />
+        app:menu="@menu/drawer_menu"
+        app:headerLayout="@layout/drawer_header"/>
+
 
 </androidx.drawerlayout.widget.DrawerLayout>
