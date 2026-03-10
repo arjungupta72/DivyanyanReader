@@ -6,4 +6,7 @@
     </style>
 
     <style name="Theme.DivyanyanReader" parent="Base.Theme.DivyanyanReader" />
+    <style name="DrawerItemTextAppearance" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textSize">20sp</item>
+    </style>
 </resources>

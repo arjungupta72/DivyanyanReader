@@ -30,6 +30,7 @@ import com.example.divyanyanreader.databinding.FragmentScanBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.concurrent.Executors
 
 class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.InstanceSegmentationListener {
@@ -40,14 +41,15 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
     private val viewModel: ScanViewModel by viewModels()
     private lateinit var drawImages: DrawImages
     private lateinit var imageCapture: ImageCapture
-
+    private var cameraProvider: ProcessCameraProvider? = null
+    private var cameraStarted = false
     private val cameraExecutor = Executors.newSingleThreadExecutor()
 
     private lateinit var tts: TextToSpeech
     private var lastSpeechTime: Long = 0
     private val speechDelay = 1500L
     private var isTtsReady = false
-
+    private var isProcessingDocument = false
     @Volatile
     private var latestPoints: List<org.opencv.core.Point>? = null
 
@@ -74,11 +76,19 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
         viewModel.initializeModel(this)
         checkPermission()
     }
-
+    override fun onResume() {
+        super.onResume()
+        if (isProcessingDocument) {
+            resetStateAfterProcessing()
+            startCamera()
+        }
+    }
     private fun startCamera() {
+        if (cameraStarted || _binding == null) return
         val providerFuture = ProcessCameraProvider.getInstance(requireContext())
         providerFuture.addListener({
             val provider = providerFuture.get()
+            cameraProvider = provider
             val aspectRatio = AspectRatio.RATIO_4_3
 
             val preview = Preview.Builder()
@@ -101,15 +111,19 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
             provider.unbindAll()
             try {
                 provider.bindToLifecycle(viewLifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analyzer, imageCapture)
+                cameraStarted = true
             } catch (exc: Exception) {
                 Log.e("CameraX", "Binding failed", exc)
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
-
+    private fun stopCameraPipeline() {
+        cameraProvider?.unbindAll()
+        cameraStarted = false
+    }
     inner class ImageAnalyzer : ImageAnalysis.Analyzer {
         override fun analyze(image: ImageProxy) {
-            if (!viewModel.isModelReady || isCapturing) {
+            if (!viewModel.isModelReady || isCapturing || isProcessingDocument) {
                 image.close()
                 return
             }
@@ -127,7 +141,7 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
 
     private fun provideAudioGuidance(state: DetectionState) {
         val currentTime = System.currentTimeMillis()
-        if (currentTime - lastSpeechTime < speechDelay || isCapturing || !isTtsReady) return
+        if (currentTime - lastSpeechTime < speechDelay || isCapturing || isProcessingDocument || !isTtsReady) return
 
         val points = state.quadPoints
         if (points == null || points.size < 4) {
@@ -172,6 +186,7 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
     }
 
     override fun onDetect(interfaceTime: Long, results: List<SegmentationResult>, preProcessTime: Long, postProcessTime: Long) {
+        if (isProcessingDocument) return
         val state = drawImages.invoke(results, isLocked)
         if (state.isQuadFound) {
             latestPoints = state.quadPoints
@@ -185,7 +200,7 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
     }
 
     private fun updateStability(state: DetectionState, results: List<SegmentationResult>) {
-        if (isCapturing) return
+        if (isCapturing || isProcessingDocument) return
 
         if (state.isQuadFound) {
             val diff = if (lastArea > 0) kotlin.math.abs(state.area - lastArea) / lastArea else 0.0
@@ -204,7 +219,7 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
     }
 
     private fun captureDocument() {
-        if (isCapturing) return
+        if (isCapturing || isProcessingDocument) return
         isCapturing = true
 
         requireActivity().window.decorView.playSoundEffect(android.view.SoundEffectConstants.CLICK)
@@ -223,21 +238,41 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
 
         imageCapture.takePicture(outputOptions, cameraExecutor, object : ImageCapture.OnImageSavedCallback {
             override fun onImageSaved(result: ImageCapture.OutputFileResults) {
-                val uri = result.savedUri ?: return
+                val uri = result.savedUri ?: run {
+                    isCapturing = false
+                    return
+                }
                 lifecycleScope.launch(Dispatchers.IO) {
-                    val bitmap = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
-                    val points = latestPoints ?: return@launch
+                    try {
+                        val bitmap = MediaStore.Images.Media.getBitmap(requireContext().contentResolver, uri)
+                        val points = latestPoints ?: run {
+                            withContext(Dispatchers.Main) { isCapturing = false }
+                            return@launch
+                        }
 
-                    val cropped = crop(bitmap, points)
+                        val cropped = crop(bitmap, points)
 
-                    requireContext().contentResolver.openOutputStream(uri)?.use {
-                        cropped.compress(Bitmap.CompressFormat.JPEG, 100, it)
-                    }
+                        requireContext().contentResolver.openOutputStream(uri)?.use {
+                            cropped.compress(Bitmap.CompressFormat.JPEG, 100, it)
+                        }
 
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(requireContext(), "Document Saved!", Toast.LENGTH_LONG).show()
-                        isCapturing = false
-                        stableFrameCount = 0
+                        val imageFile = File(requireContext().cacheDir, "latest_cropped.jpg")
+                        imageFile.outputStream().use { out ->
+                            cropped.compress(Bitmap.CompressFormat.JPEG, 100, out)
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(requireContext(), "Document Saved!", Toast.LENGTH_SHORT).show()
+                            isCapturing = false
+                            isProcessingDocument = true
+                            stopCameraPipeline()
+                            startActivity(ProcessImageActivity.createIntent(requireContext(), imageFile.absolutePath))
+                        }
+                    } catch (exception: Exception) {
+                        withContext(Dispatchers.Main) {
+                            isCapturing = false
+                            Log.e("Capture", "Error processing capture", exception)
+                        }
                     }
                 }
             }
@@ -248,7 +283,13 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
             }
         })
     }
-
+    private fun resetStateAfterProcessing() {
+        isProcessingDocument = false
+        stableFrameCount = 0
+        lastArea = 0.0
+        isLocked = false
+        latestPoints = null
+    }
     private fun crop(bitmap: Bitmap, points: List<org.opencv.core.Point>): Bitmap {
         val srcMat = org.opencv.core.Mat()
         org.opencv.android.Utils.bitmapToMat(bitmap, srcMat)
@@ -321,6 +362,7 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
             tts.stop()
             tts.shutdown()
         }
+        stopCameraPipeline()
         cameraExecutor.shutdown()
         _binding = null
         super.onDestroyView()

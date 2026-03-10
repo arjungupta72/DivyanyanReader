@@ -1,4 +1,13 @@
 <resources>
     <string name="app_name">DivyanyanReader</string>
     <string name="open_drawer">Open drawer menu</string>
+    <string name="select_ocr_engine">Select OCR engine</string>
+    <string name="ocr_engine_ml_kit">ML Kit</string>
+    <string name="ocr_engine_tesseract">Tesseract</string>
+    <string name="select_ocr_language">Select OCR language</string>
+    <string name="processing_image">Running OCR and starting audio…</string>
+    <string name="processing_failed">Failed to process image</string>
+    <string name="ocr_complete">OCR output</string>
+    <string name="no_text_found">No text found</string>
+    <string name="close">Close</string>
 </resources>
