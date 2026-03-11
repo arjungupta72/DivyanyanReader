@@ -2,6 +2,7 @@ package com.example.divyanyanreader
 
 import android.os.Bundle
 import androidx.appcompat.app.AlertDialog
+import android.os.Build
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
@@ -46,6 +47,11 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 R.id.nav_device_wifi -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        SoftApConnector.connectToPiSoftAP(this)
+                    } else {
+                        Toast.makeText(this, "Device WiFi setup requires Android 10+", Toast.LENGTH_LONG).show()
+                    }
                     binding.drawerLayout.closeDrawer(GravityCompat.START)
                     true
                 }
