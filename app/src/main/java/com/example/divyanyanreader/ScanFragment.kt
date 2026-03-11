@@ -193,8 +193,11 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
         }
 
         activity?.runOnUiThread {
+            val currentBinding = _binding ?: return@runOnUiThread
+            if (!isAdded || isDetached || isRemoving || isProcessingDocument) return@runOnUiThread
+
             updateStability(state, results)
-            binding.ivOverlay.setImageBitmap(state.bitmap)
+            currentBinding.ivOverlay.setImageBitmap(state.bitmap)
             provideAudioGuidance(state)
         }
     }

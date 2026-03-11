@@ -49,7 +49,10 @@ class MainActivity : AppCompatActivity() {
                     binding.drawerLayout.closeDrawer(GravityCompat.START)
                     true
                 }
-
+                R.id.nav_logout -> {
+                    binding.drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
                 else -> false
             }
         }
