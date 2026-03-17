@@ -38,6 +38,9 @@ class InstanceSegmentation(
 ) {
 
     private var interpreter: Interpreter
+    private val interpreterLock = Any()
+    @Volatile
+    private var isClosed = false
     private var labels = mutableListOf<String>()
 
     private var tensorWidth = 0
@@ -167,12 +170,19 @@ class InstanceSegmentation(
     }
 
     fun close() {
-        interpreter.close()
-        gpuDelegate?.close()
-        nnApiDelegate?.close()
+        synchronized(interpreterLock) {
+            if (isClosed) return
+            isClosed = true
+            interpreter.close()
+            gpuDelegate?.close()
+            nnApiDelegate?.close()
+            gpuDelegate = null
+            nnApiDelegate = null
+        }
     }
 
     fun invoke(frame: Bitmap) {
+        if (isClosed) return
         if (tensorWidth == 0 || tensorHeight == 0 || numChannel == 0 || numElements == 0 || xPoints == 0 || yPoints == 0 || masksNum == 0) {
             instanceSegmentationListener.onError("Interpreter not initialized properly")
             return
@@ -204,8 +214,19 @@ class InstanceSegmentation(
 
         var interfaceTime = SystemClock.uptimeMillis()
 
-        interpreter.runForMultipleInputsOutputs(imageBuffer, outputBuffer)
-
+        try {
+            synchronized(interpreterLock) {
+                if (isClosed) return
+                interpreter.runForMultipleInputsOutputs(imageBuffer, outputBuffer)
+            }
+        } catch (error: IllegalStateException) {
+            Log.w(TAG, "Skipping frame because interpreter is closing/closed", error)
+            return
+        } catch (error: Exception) {
+            instanceSegmentationListener.onError("Segmentation failed: ${error.message}")
+            Log.e(TAG, "Segmentation invocation failed", error)
+            return
+        }
         interfaceTime = SystemClock.uptimeMillis() - interfaceTime
 
         var postProcessTime = SystemClock.uptimeMillis()
@@ -417,6 +438,7 @@ class InstanceSegmentation(
 
 
     companion object {
+        private const val TAG = "InstanceSegmentation"
         private const val INPUT_MEAN = 0f
         private const val INPUT_STANDARD_DEVIATION = 255f
         private val INPUT_IMAGE_TYPE = DataType.FLOAT32

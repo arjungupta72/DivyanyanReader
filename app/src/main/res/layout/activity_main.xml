@@ -43,6 +43,7 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <FrameLayout
+        android:id="@+id/drawerContentContainer"
         android:layout_width="280dp"
         android:layout_height="match_parent"
         android:layout_gravity="start">

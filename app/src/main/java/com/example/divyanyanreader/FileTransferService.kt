@@ -44,17 +44,12 @@ class FileTransferService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP_SERVICE) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
+            stopSelf(startId)
             return START_NOT_STICKY
         }
 
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            createNotification(),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-        )
+        val manager = getSystemService(NotificationManager::class.java)
+        manager?.notify(NOTIFICATION_ID, createNotification())
         return START_STICKY
     }
 
@@ -245,6 +240,8 @@ class FileTransferService : Service() {
         multicastLock?.release()
         multicastLock = null
         ioExecutor.shutdownNow()
+        val manager = getSystemService(NotificationManager::class.java)
+        manager?.cancel(NOTIFICATION_ID)
         broadcastStatus("Receiver stopped")
         super.onDestroy()
     }

@@ -14,12 +14,13 @@ class ReceiveFragment : Fragment(R.layout.fragment_receive) {
 
     private var _binding: FragmentReceiveBinding? = null
     private val binding get() = _binding!!
+    private var isReceiverRegistered = false
 
     private val statusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == FileTransferService.ACTION_RECEIVER_STATUS) {
                 val message = intent.getStringExtra(FileTransferService.EXTRA_STATUS) ?: return
-                binding.tvReceiverStatus.text = message
+                _binding?.tvReceiverStatus?.text = message
             }
         }
     }
@@ -35,7 +36,7 @@ class ReceiveFragment : Fragment(R.layout.fragment_receive) {
 
     private fun startReceiverService() {
         val serviceIntent = Intent(requireContext(), FileTransferService::class.java)
-        ContextCompat.startForegroundService(requireContext(), serviceIntent)
+        requireContext().startService(serviceIntent)
         binding.tvReceiverStatus.text = getString(R.string.receive_starting)
     }
 
@@ -56,10 +57,14 @@ class ReceiveFragment : Fragment(R.layout.fragment_receive) {
             filter,
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
+        isReceiverRegistered = true
     }
 
     override fun onStop() {
-        requireContext().unregisterReceiver(statusReceiver)
+        if (isReceiverRegistered) {
+            requireContext().unregisterReceiver(statusReceiver)
+            isReceiverRegistered = false
+        }
         super.onStop()
     }
 

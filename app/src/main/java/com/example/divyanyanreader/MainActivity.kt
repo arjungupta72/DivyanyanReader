@@ -1,15 +1,16 @@
 package com.example.divyanyanreader
 
-import android.os.Bundle
-import androidx.appcompat.app.AlertDialog
 import android.os.Build
+import android.os.Bundle
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
-import androidx.fragment.app.Fragment
-import com.example.divyanyanreader.databinding.ActivityMainBinding
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import androidx.fragment.app.Fragment
+import com.example.divyanyanreader.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
@@ -19,11 +20,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        ViewCompat.setOnApplyWindowInsetsListener(binding.btnDrawer) { view, insets ->
-            val statusBars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
-            view.setPadding(view.paddingLeft, statusBars.top + 8, view.paddingRight, view.paddingBottom)
-            insets
-        }
+        applyWindowInsets()
 
         if (savedInstanceState == null) {
             openFragment(ScanFragment())
@@ -83,6 +80,26 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+    private fun applyWindowInsets() {
+        val drawerButtonInitialTop = binding.btnDrawer.paddingTop
+        val bottomNavigationInitialBottom = binding.bottomNavigation.paddingBottom
+        val drawerContainerInitialBottom = binding.drawerContentContainer.paddingBottom
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.drawerLayout) { _, insets ->
+            val statusBars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+            val navigationBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+
+            binding.btnDrawer.updatePadding(top = drawerButtonInitialTop + statusBars.top)
+            binding.bottomNavigation.updatePadding(bottom = bottomNavigationInitialBottom + navigationBars.bottom)
+            binding.drawerContentContainer.updatePadding(bottom = drawerContainerInitialBottom + navigationBars.bottom)
+
+            val headerView = binding.navigationDrawer.getHeaderView(0)
+            headerView.updatePadding(top = statusBars.top)
+
+            insets
+        }
+    }
+
     private fun showOcrEnginePicker() {
         val options = arrayOf(getString(R.string.ocr_engine_ml_kit), getString(R.string.ocr_engine_tesseract))
         val current = ReaderPreferences.getOcrEngine(this)
@@ -115,6 +132,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction().replace(R.id.fragmentContainer, fragment).commit()
+        supportFragmentManager
+            .beginTransaction()
+            .replace(R.id.fragmentContainer, fragment)
+            .commit()
     }
 }

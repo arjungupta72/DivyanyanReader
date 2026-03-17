@@ -87,6 +87,7 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
         if (cameraStarted || _binding == null) return
         val providerFuture = ProcessCameraProvider.getInstance(requireContext())
         providerFuture.addListener({
+            if (_binding == null || !isAdded) return@addListener
             val provider = providerFuture.get()
             cameraProvider = provider
             val aspectRatio = AspectRatio.RATIO_4_3
@@ -135,7 +136,7 @@ class ScanFragment : Fragment(R.layout.fragment_scan), InstanceSegmentation.Inst
             val rotatedBitmap = Bitmap.createBitmap(bitmapBuffer, 0, 0, bitmapBuffer.width, bitmapBuffer.height, matrix, true)
 
             viewModel.runSegmentation(rotatedBitmap)
-            image.close()
+
         }
     }
 
