@@ -10,7 +10,8 @@
     <string name="ocr_complete">OCR output</string>
     <string name="no_text_found">No text found</string>
     <string name="close">Close</string>
-    <string name="receive_waiting_to_start">Receiver is idle. Tap Start Receiver to begin.</string>
-    <string name="receive_starting">Starting receiver service…</string>
-    <string name="receive_stopping">Stopping receiver service…</string>
+    <string name="receive_waiting_to_start">Tap Start Receiver to begin.</string>
+    <string name="receive_starting">Started receiver service…</string>
+    <string name="receive_stopping">Receiver service stopped</string>
+    <string name="drawer_copyright">© 2026 CSIR-CSIO</string>
 </resources>

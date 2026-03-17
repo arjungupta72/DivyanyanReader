@@ -57,6 +57,10 @@ class MainActivity : AppCompatActivity() {
                 }
                 R.id.nav_logout -> {
                     binding.drawerLayout.closeDrawer(GravityCompat.START)
+                    binding.drawerLayout.post {
+                        finishAffinity()
+                        finishAndRemoveTask()
+                    }
                     true
                 }
                 else -> false

@@ -42,14 +42,30 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/navigationDrawer"
+    <FrameLayout
         android:layout_width="280dp"
         android:layout_height="match_parent"
-        android:layout_gravity="start"
-        app:itemTextAppearance="@style/DrawerItemTextAppearance"
-        app:menu="@menu/drawer_menu"
-        app:headerLayout="@layout/drawer_header"/>
+        android:layout_gravity="start">
 
+        <com.google.android.material.navigation.NavigationView
+            android:id="@+id/navigationDrawer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingBottom="52dp"
+            app:itemTextAppearance="@style/DrawerItemTextAppearance"
+            app:menu="@menu/drawer_menu"
+            app:headerLayout="@layout/drawer_header" />
+
+        <TextView
+            android:id="@+id/tvDrawerCopyright"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="14dp"
+            android:text="@string/drawer_copyright"
+            android:textColor="@android:color/darker_gray"
+            android:textSize="16sp" />
+    </FrameLayout>
 
 </androidx.drawerlayout.widget.DrawerLayout>
